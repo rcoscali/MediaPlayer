@@ -8,5 +8,6 @@
     <string name="play_label">Play</string>
     <string name="pause_label">Pause</string>
     <string name="ff_label">Fast Forward</string>
+    <string name="MovieTitle">A Movie</string>
     
 </resources>

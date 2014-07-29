@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="MovieItemLeftMargin">3px</dimen>
+    <dimen name="MovieItemRightMargin">3px</dimen>
+    <dimen name="MovieItemTopMargin">1px</dimen>
+    <dimen name="MovieItemBottomMargin">1px</dimen>
+    <dimen name="MovieItemTitleSize">15dp</dimen>
+</resources>
