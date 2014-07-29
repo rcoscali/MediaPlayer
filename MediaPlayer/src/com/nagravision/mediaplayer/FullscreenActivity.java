@@ -5,7 +5,6 @@ import com.nagravision.mediaplayer.util.SystemUiHider;
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.content.res.XmlResourceParser;
 import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Build;
@@ -20,7 +19,6 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.MediaController;
-import android.widget.TextView;
 import android.widget.VideoView;
 
 /**
@@ -95,7 +93,7 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 		mMoviesList.setAdapter(mUrlsAdapter);
 
 		OnItemClickListener mMessageClickedHandler = new OnItemClickListener() {
-		    public void onItemClick(AdapterView parent, View v, int position, long id) {
+		    public void onItemClick(@SuppressWarnings("rawtypes") AdapterView parent, View v, int position, long id) {
 		    	mDrawer.closeDrawers();
 				mVideoHolder.setVideoURI(Uri.parse(MOVIES_URLS[position]));
 				mVideoHolder.requestFocus();
