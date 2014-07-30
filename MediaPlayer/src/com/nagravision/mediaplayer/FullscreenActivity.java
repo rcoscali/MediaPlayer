@@ -4,6 +4,7 @@ import com.nagravision.mediaplayer.util.SystemUiHider;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.app.ActionBar;
 import android.app.Activity;
 import android.graphics.PixelFormat;
 import android.net.Uri;
@@ -14,6 +15,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.DrawerLayout.DrawerListener;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
@@ -32,19 +34,27 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 
 
     private static final String MOVIES_ARR[] = {
-    	"Titles",
-    	"Sintel (mp4)", 
-    	"ED (avi)", 
-    	"exMPD_BIP_TC1 (mpd)", 
-    	"Reel (avi)", 
-    	"Big Buck Bunny (m4v)"};
+/*01*/    	"Sintel (mp4)", 
+/*02*/    	"Elephants Dream (avi)", 
+/*03*/    	"exMPD_BIP_TC1 (dash+xml)", 
+/*04*/    	"Reel (avi)", 
+/*05*/    	"Big Buck Bunny (m4v)",
+/*06*/    	"Elephants Dream (mkv)",
+/*07*/    	"Reel (file:mp4)",
+/*08*/    	"Project London (file:mp4)",
+/*09*/    	"Tears of Steel (mkv)"
+    	};
     private static final String MOVIES_URLS[] = {
-    	"",
-        "http://mirrorblender.top-ix.org/movies/sintel-1280-surround.mp4",
-        "http://video.blendertestbuilds.de/download.blender.org/ED/ED_1024.avi",
-        "http://dash.edgesuite.net/dash264/TestCases/1a/netflix/exMPD_BIP_TC1.mpd",
-        "http://av.vimeo.com/12067/403/106802665.mp4?download=1&token2=1406580578_b736cf91787070149db5c21909d920e3&filename=Reel%25202012-HD.mp4",
-        "http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_640x360.m4v"};
+/*01*/        "http://mirrorblender.top-ix.org/movies/sintel-1280-surround.mp4",
+/*02*/        "http://video.blendertestbuilds.de/download.blender.org/ED/ED_1024.avi",
+/*03*/        "http://dash.edgesuite.net/dash264/TestCases/1a/netflix/exMPD_BIP_TC1.mpd",
+/*04*/        "http://av.vimeo.com/12067/403/106802665.mp4?download=1&token2=1406580578_b736cf91787070149db5c21909d920e3&filename=Reel%25202012-HD.mp4",
+/*05*/        "http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_640x360.m4v",
+/*06*/        "http://download.blender.org/ED/ed3d_sidebyside-RL-2x1920x1038_24fps.mkv",
+/*07*/        "file://Reel 2012-SD.mp4",
+/*08*/		  "file://Project London- Official Trailer-SD.mp4",
+/*09*/		  "http://arcagenis.org/mirror/mango/ToS/tears_of_steel_1080p.mkv"
+        };
     private ArrayAdapter<String> mUrlsAdapter;
                                                 
 
@@ -84,14 +94,40 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_fullscreen);
+		if (Build.VERSION.SDK_INT < 16) {
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
+		
+		setContentView(R.layout.activity_fullscreen);
         mDrawer = (DrawerLayout)findViewById(R.id.drawer_layout);
 		mMoviesList = (ListView)findViewById(R.id.start_drawer);
 		mUrlsAdapter = new ArrayAdapter<String>(this, 
 												android.R.layout.simple_list_item_activated_1, 
 												MOVIES_ARR);
 		mMoviesList.setAdapter(mUrlsAdapter);
+		mVideoHolder = (VideoView)findViewById(R.id.fullscreen_content);
 
+		View decorView = getWindow().getDecorView();
+		// Hide the status bar.
+		int uiOptions = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+				   		View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+				   		View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+				   		View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+				   		View.SYSTEM_UI_FLAG_FULLSCREEN |
+				   		View.SYSTEM_UI_FLAG_IMMERSIVE;
+		decorView.setSystemUiVisibility(uiOptions);
+		// Remember that you should never show the action bar if the
+		// status bar is hidden, so hide that too if necessary.
+		ActionBar actionBar = getActionBar();
+		actionBar.hide();
+		
+		mVideoHolder.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+										   View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+										   View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+										   View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+										   View.SYSTEM_UI_FLAG_FULLSCREEN |
+										   View.SYSTEM_UI_FLAG_IMMERSIVE);
 		OnItemClickListener mMessageClickedHandler = new OnItemClickListener() {
 		    public void onItemClick(@SuppressWarnings("rawtypes") AdapterView parent, View v, int position, long id) {
 		    	mDrawer.closeDrawers();
@@ -104,7 +140,6 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 		mMoviesList.setOnItemClickListener(mMessageClickedHandler);		
 		
 		getWindow().setFormat(PixelFormat.TRANSLUCENT);
-		mVideoHolder = (VideoView)findViewById(R.id.fullscreen_content);
 		mControlsView = new MediaController(this);
 		mVideoHolder.setMediaController(mControlsView);
 
@@ -208,13 +243,22 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 
 	@Override
 	public void onDrawerClosed(View arg0) {
-		// TODO Auto-generated method stub
+		View decorView = getWindow().getDecorView();
+		int uiOptions = View.SYSTEM_UI_FLAG_FULLSCREEN 
+				| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+				| View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+		decorView.setSystemUiVisibility(uiOptions);
 		if (mVideoHolder.canPause()) mVideoHolder.start();
 	}
 
 	@Override
 	public void onDrawerOpened(View arg0) {
-		// TODO Auto-generated method stub
+		View decorView = getWindow().getDecorView();
+		int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+				| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+				| View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+				| View.SYSTEM_UI_FLAG_FULLSCREEN;
+		decorView.setSystemUiVisibility(uiOptions);
 		if (mVideoHolder.canPause()) mVideoHolder.pause();
 		delayedHide(AUTO_HIDE_DELAY_MILLIS);
 	}
