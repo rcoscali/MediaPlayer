@@ -1,11 +1,19 @@
 package com.nagravision.mediaplayer;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+
 import com.nagravision.mediaplayer.util.SystemUiHider;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Build;
@@ -80,6 +88,9 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	 * The flags to pass to {@link SystemUiHider#getInstance}.
 	 */
 	private static final int HIDER_FLAGS = SystemUiHider.FLAG_HIDE_NAVIGATION;
+	
+	private static final int REQUEST_DISPLAY = 0;
+	private static final int REQUEST_INFOS = 1;
 
 	/**
 	 * The instance of the {@link SystemUiHider} for this activity.
@@ -89,7 +100,19 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	private VideoView mVideoHolder;
 	private MediaController mControlsView;
 	private ListView mMoviesList;
+	private Notification.Builder mNotifBuilder;
+	private NotificationManager mNotifMgr = null;
+	private Notification mLastNotif = null;
+	private int mLastPosition = -1;
+	private PendingIntent mDefaultIntent, mInfosIntent;
+	private Intent mExplicitIntent, mInfosActionIntent;
 
+	@Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("tab", getActionBar().getSelectedNavigationIndex());
+    }
+	
 	@SuppressLint("InlinedApi")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -99,6 +122,8 @@ public class FullscreenActivity extends Activity implements DrawerListener {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, 
+				WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		
 		setContentView(R.layout.activity_fullscreen);
         mDrawer = (DrawerLayout)findViewById(R.id.drawer_layout);
@@ -122,8 +147,27 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 		decorView.setSystemUiVisibility(uiOptions);
 		// Remember that you should never show the action bar if the
 		// status bar is hidden, so hide that too if necessary.
-		ActionBar actionBar = getActionBar();
+		final ActionBar actionBar = getActionBar();
+		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
+		actionBar.setDisplayOptions(0, ActionBar.DISPLAY_SHOW_TITLE);
 		actionBar.hide();
+		
+		mNotifBuilder = new Notification.Builder(this);
+		mNotifMgr = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		mExplicitIntent = new Intent(Intent.ACTION_VIEW);
+		mExplicitIntent.setClass(this, this.getClass());
+		mDefaultIntent = PendingIntent.getActivity(this, 
+				 								   REQUEST_DISPLAY, 
+				 								   mExplicitIntent, 
+				 								   0);
+		mInfosActionIntent = new Intent();
+		mInfosActionIntent.setAction("com.nagravision.mediaplayer.VIDEO_INFOS");
+		mInfosActionIntent.addCategory(Intent.CATEGORY_DEFAULT);
+		mInfosActionIntent.addCategory(Intent.CATEGORY_INFO);
+		mInfosIntent = PendingIntent.getActivity(this,
+												 REQUEST_INFOS,
+												 mInfosActionIntent,
+												 0);
 		
 		if (Build.VERSION.SDK_INT >= 19) {
 			mVideoHolder.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
@@ -142,10 +186,46 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 		}
 		OnItemClickListener mMessageClickedHandler = new OnItemClickListener() {
 		    public void onItemClick(@SuppressWarnings("rawtypes") AdapterView parent, View v, int position, long id) {
+		    	
+		    	/* Close the drawer */
 		    	mDrawer.closeDrawers();
+
+		    	/* Build the notification we are going to display */
+		    	mNotifBuilder.setContentText(getResources().getString(R.string.playing_notification));
+		    	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		    	(new PrintWriter(baos)).format(getResources().getString(R.string.long_playing_notification), MOVIES_ARR[position]);
+		    	mNotifBuilder.setContentInfo(baos.toString());
+				mNotifBuilder.setContentTitle(getResources().getString(R.string.app_name));
+				mNotifBuilder.setSubText(getResources().getString(R.string.app_copyright));
+				mNotifBuilder.setSmallIcon(R.drawable.ic_action_play);
+				mExplicitIntent.setData(Uri.parse(MOVIES_URLS[position]));
+				mNotifBuilder.setContentIntent(mDefaultIntent);
+				mNotifBuilder.addAction(R.drawable.ic_action_about,
+								getResources().getString(R.string.infos_action_description),
+								mInfosIntent);
+		    	
+				/* If a notif was already sent, cancel it */
+				if (mLastNotif != null) {
+		    		if (mLastPosition  != -1) {
+		    			mNotifMgr.cancel(getResources().getString(R.string.playing_notification), 
+		    							 mLastPosition);
+		    			mLastPosition = -1;
+		    		}
+		    		else
+		    			mNotifMgr.cancelAll();
+		    		mLastNotif = null;
+		    	}
+		    	mLastNotif = mNotifBuilder.build();
+		    	mLastPosition = position;
+		    	
+		    	/* Setup media player for playing the movie */
 				mVideoHolder.setVideoURI(Uri.parse(MOVIES_URLS[position]));
 				mVideoHolder.requestFocus();
-				mVideoHolder.start();		        
+				mVideoHolder.start();
+				/* Player has started ... send notification */
+				mNotifMgr.notify(getResources().getString(R.string.playing_notification), 
+								 mLastPosition, 
+								 mLastNotif);
 		    }
 		};
 
@@ -209,6 +289,10 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 		});
 
 		mDrawer.openDrawer(mMoviesList);
+
+		if (savedInstanceState != null) {
+            actionBar.setSelectedNavigationItem(savedInstanceState.getInt("tab", 0));
+        }		
 	}
 
 	@Override
@@ -286,4 +370,5 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 		// TODO Auto-generated method stub
 		
 	}
+	
 }
