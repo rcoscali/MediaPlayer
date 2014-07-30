@@ -19,11 +19,21 @@
             android:name=".FullscreenActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="@string/app_name"
-            android:theme="@style/FullscreenTheme" >
-            <intent-filter>
+            android:theme="@style/FullscreenTheme" android:permission="android.permission.READ_EXTERNAL_STORAGE" android:immersive="true" android:icon="@drawable/ic_launcher" android:description="@string/app_description" android:screenOrientation="landscape" android:logo="@drawable/ic_action_play">
+            <intent-filter android:label="MediaPlayerMain" android:logo="@drawable/ic_action_play_over_video" android:priority="5" android:icon="@drawable/ic_action_play_over_video">
                 <action android:name="android.intent.action.MAIN" />
-
+                <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter android:label="MediaPlayerView" android:logo="@drawable/ic_action_play_over_video" android:priority="10" android:icon="@drawable/ic_action_play_over_video">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.HOME"/>
+                </intent-filter>
+            <intent-filter android:label="MediaPlayerInfos" android:logo="@drawable/ic_action_about" android:priority="10" android:icon="@drawable/ic_action_about">
+                <action android:name="com.nagravision.mediaplayer.VIDEO_INFOS"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.INFO"/>
             </intent-filter>
         </activity>
     </application>

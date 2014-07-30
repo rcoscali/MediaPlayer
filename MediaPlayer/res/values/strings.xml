@@ -9,5 +9,10 @@
     <string name="pause_label">Pause</string>
     <string name="ff_label">Fast Forward</string>
     <string name="MovieTitle">A Movie</string>
+    <string name="playing_notification">Playing </string>
+    <string name="long_playing_notification">At now your MediaPlayer is playing a movie titled: %s. Use the following action for displaying infos about it &amp;#8230;</string>
+    <string name="app_copyright">This player is a gift from Nagravision, a division of Kudelski Group</string>
+    <string name="app_description">MediaPlayer providing descrambling through Android DRM framework</string>
+    <string name="infos_action_description">Information on Movie Format, Codec &amp; Drm</string>
     
 </resources>

@@ -1,11 +1,19 @@
 package com.nagravision.mediaplayer;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+
 import com.nagravision.mediaplayer.util.SystemUiHider;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Build;
@@ -13,6 +21,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.DrawerLayout.DrawerListener;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -32,7 +41,8 @@ import android.widget.VideoView;
 @SuppressLint({ "CutPasteId", "InlinedApi" })
 public class FullscreenActivity extends Activity implements DrawerListener {
 
-
+	private static final String LOG_TAG = "JAVA(MediaPlayer)";
+	
     private static final String MOVIES_ARR[] = {
 /*01*/    	"Sintel (mp4)", 
 /*02*/    	"Elephants Dream (avi)", 
@@ -80,6 +90,9 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	 * The flags to pass to {@link SystemUiHider#getInstance}.
 	 */
 	private static final int HIDER_FLAGS = SystemUiHider.FLAG_HIDE_NAVIGATION;
+	
+	private static final int REQUEST_DISPLAY = 0;
+	private static final int REQUEST_INFOS = 1;
 
 	/**
 	 * The instance of the {@link SystemUiHider} for this activity.
@@ -89,15 +102,38 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	private VideoView mVideoHolder;
 	private MediaController mControlsView;
 	private ListView mMoviesList;
+	private Notification.Builder mNotifBuilder;
+	private NotificationManager mNotifMgr = null;
+	private Notification mLastNotif = null;
+	private int mLastPosition = -1;
+	private PendingIntent mDefaultIntent, mInfosIntent;
+	private Intent mExplicitIntent, mInfosActionIntent;
 
 	@Override
+    protected void onSaveInstanceState(Bundle outState) {
+        Log.v(LOG_TAG, "FullscreenActivity::onSaveInstanceState - Enter\n");
+        super.onSaveInstanceState(outState);
+        Log.v(LOG_TAG, "SavingSTATE: LastPosition = " + mLastPosition + "\n");
+    	outState.putInt("LastPosition", mLastPosition);
+        if (mLastPosition >= 0 && mLastPosition < MOVIES_URLS.length)
+        {
+            Log.v(LOG_TAG, "SavingSTATE: MediaPosition = " + mVideoHolder.getCurrentPosition() + "\n");
+        	outState.putInt("MediaPosition", mVideoHolder.getCurrentPosition());
+        }
+    }
+	
+	@SuppressLint("InlinedApi")
+	@Override
 	protected void onCreate(Bundle savedInstanceState) {
+        Log.v(LOG_TAG, "FullscreenActivity::onCreate - Enter\n");
 		super.onCreate(savedInstanceState);
 
 		if (Build.VERSION.SDK_INT < 16) {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
+		getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, 
+				WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		
 		setContentView(R.layout.activity_fullscreen);
         mDrawer = (DrawerLayout)findViewById(R.id.drawer_layout);
@@ -116,43 +152,94 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 				   		View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
 				   		View.SYSTEM_UI_FLAG_FULLSCREEN;
 		if (Build.VERSION.SDK_INT >= 19) {
-			uiOptions  |=
-					View.SYSTEM_UI_FLAG_IMMERSIVE;
+			uiOptions |= View.SYSTEM_UI_FLAG_IMMERSIVE;
         }
 		decorView.setSystemUiVisibility(uiOptions);
 		// Remember that you should never show the action bar if the
 		// status bar is hidden, so hide that too if necessary.
-		ActionBar actionBar = getActionBar();
+		final ActionBar actionBar = getActionBar();
+		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
+		actionBar.setDisplayOptions(0, ActionBar.DISPLAY_SHOW_TITLE);
 		actionBar.hide();
+		
+		mNotifBuilder = new Notification.Builder(this);
+		mNotifMgr = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+		mExplicitIntent = new Intent(Intent.ACTION_VIEW);
+		mExplicitIntent.setClass(this, this.getClass());
+		mDefaultIntent = PendingIntent.getActivity(this, 
+				 								   REQUEST_DISPLAY, 
+				 								   mExplicitIntent, 
+				 								   Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+				 								   Intent.FLAG_DEBUG_LOG_RESOLUTION);
+		mInfosActionIntent = new Intent();
+		mInfosActionIntent.setAction("com.nagravision.mediaplayer.VIDEO_INFOS");
+		mInfosActionIntent.addCategory(Intent.CATEGORY_DEFAULT);
+		mInfosActionIntent.addCategory(Intent.CATEGORY_INFO);
+		mInfosIntent = PendingIntent.getActivity(this,
+												 REQUEST_INFOS,
+												 mInfosActionIntent,
+												 Intent.FLAG_ACTIVITY_NEW_TASK |
+				 								 Intent.FLAG_DEBUG_LOG_RESOLUTION);
 		
 		if (Build.VERSION.SDK_INT >= 19) {
 			mVideoHolder.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-					   View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-					   View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-					   View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-					   View.SYSTEM_UI_FLAG_FULLSCREEN);
-        }
+					View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+					View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+					View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+					View.SYSTEM_UI_FLAG_FULLSCREEN |
+					View.SYSTEM_UI_FLAG_IMMERSIVE);
+		}
 		else {
 			mVideoHolder.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-					   View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-					   View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-					   View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-					   View.SYSTEM_UI_FLAG_FULLSCREEN |
-					   View.SYSTEM_UI_FLAG_IMMERSIVE);		
+					View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+					View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+					View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+					View.SYSTEM_UI_FLAG_FULLSCREEN);			
 		}
 		OnItemClickListener mMessageClickedHandler = new OnItemClickListener() {
 		    public void onItemClick(@SuppressWarnings("rawtypes") AdapterView parent, View v, int position, long id) {
-		    	mDrawer.closeDrawers();
-				mVideoHolder.setVideoURI(Uri.parse(MOVIES_URLS[position]));
-				mVideoHolder.requestFocus();
-				mVideoHolder.start();		        
+		    	Log.v(LOG_TAG, "FullscreenActivity.onCreate.OnItemClickListener::onItemClick - Enter\n");
+		    	ClickItem(position, 0);
 		    }
 		};
 
 		mMoviesList.setOnItemClickListener(mMessageClickedHandler);		
 		
 		getWindow().setFormat(PixelFormat.TRANSLUCENT);
-		mControlsView = new MediaController(this);
+		mControlsView = new MediaController(this, true);
+		mControlsView.setPrevNextListeners(new View.OnClickListener() 
+										   {
+												/*
+												 * Next listener
+												 */
+										   		@Override
+										   		public void onClick(View view) {
+										   			Log.v(LOG_TAG, "FullscreenActivity.onCreate.OnClickListener::onClick(next) - Enter\n");
+										   			mVideoHolder.stopPlayback();
+										   			int position = 0;
+										   			if (mLastPosition > 0)
+										   				position = mLastPosition +1;
+										   			if (position >= MOVIES_URLS.length)
+										   				position = 0;
+										   			ClickItem(position, 0);
+										   		}
+										   }, new View.OnClickListener() 
+										   {
+												/*
+												 * Prev listener
+												 */
+											   @Override
+											   public void onClick(View view) {
+										   			Log.v(LOG_TAG, "FullscreenActivity.onCreate.OnClickListener::onClick(prev) - Enter\n");
+												    mVideoHolder.stopPlayback();
+										   			int position = 0;
+										   			if (mLastPosition > 0)
+										   				position = mLastPosition -1;
+										   			if (position < 0)
+										   				position = MOVIES_URLS.length -1;
+										   			ClickItem(position, 0);
+											   }
+										   });
 		mVideoHolder.setMediaController(mControlsView);
 
 		// Set up an instance of SystemUiHider to control the system UI for
@@ -168,6 +255,8 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 			@Override
 			@TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
 			public void onVisibilityChange(boolean visible) {
+				Log.v(LOG_TAG, "FullscreenActivity.OnVisibilityChangeListener::onVisibilityChange - Enter\n");
+				
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
 					// If the ViewPropertyAnimator API is available
 					// (Honeycomb MR2 and later), use it to animate the
@@ -213,11 +302,21 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 
 	@Override
 	protected void onPostCreate(Bundle savedInstanceState) {
+        Log.v(LOG_TAG, "FullscreenActivity::onPostCreate - Enter\n");
 		super.onPostCreate(savedInstanceState);
 
-		// Trigger the initial hide() shortly after the activity has been
-		// created, to briefly hint to the user that UI controls
-		// are available.
+        Log.v(LOG_TAG, "savedInstanceState = " + savedInstanceState + "\n");
+		if (savedInstanceState != null) {
+			Log.v(LOG_TAG, "Restoring SavedSTATE\n");
+            if (savedInstanceState.containsKey("LastPosition")) {
+            	int position = savedInstanceState.getInt("LastPosition");
+    			Log.v(LOG_TAG, "SavedSTATE: LastPosition = " + mLastPosition + "\n");
+    			int msec = savedInstanceState.getInt("MediaPosition");
+    			Log.v(LOG_TAG, "SavedSTATE: MediaPosition = " + msec + "\n");
+    			ClickItem(position, msec);
+            }
+        }		
+
 		delayedHide(100);
 	}
 
@@ -229,6 +328,7 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	View.OnTouchListener mDelayHideTouchListener = new View.OnTouchListener() {
 		@Override
 		public boolean onTouch(View view, MotionEvent motionEvent) {
+			Log.v(LOG_TAG, "FullscreenActivity.mDelayHideTouchListener.OnTouchListener.onTouch - Enter\n");
 			if (AUTO_HIDE) {
 				delayedHide(AUTO_HIDE_DELAY_MILLIS);
 			}
@@ -237,9 +337,11 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	};
 	
 	Handler mHideHandler = new Handler();
+	
 	Runnable mHideRunnable = new Runnable() {
 		@Override
 		public void run() {
+			Log.v(LOG_TAG, "FullscreenActivity.mHideRunnable.Runnable - Enter\n");
 			mSystemUiHider.hide();
 		}
 	};
@@ -249,22 +351,77 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	 * previously scheduled calls.
 	 */
 	private void delayedHide(int delayMillis) {
+		Log.v(LOG_TAG, "FullscreenActivity::delayedHide - Enter\n");
 		mHideHandler.removeCallbacks(mHideRunnable);
 		mHideHandler.postDelayed(mHideRunnable, delayMillis);
+	}
+	
+	private void ClickItem(int position, int msec) {
+		Log.v(LOG_TAG, "FullscreenActivity::ClickItem - Enter\n");
+
+		/* Close the drawer */
+    	mDrawer.closeDrawers();
+
+    	/* Build the notification we are going to display */
+    	mNotifBuilder.setContentText(getResources().getString(R.string.playing_notification));
+    	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    	(new PrintWriter(baos)).format(getResources().getString(R.string.long_playing_notification), MOVIES_ARR[position]);
+    	mNotifBuilder.setContentInfo(baos.toString());
+		mNotifBuilder.setContentTitle(getResources().getString(R.string.app_name));
+		mNotifBuilder.setSubText(getResources().getString(R.string.app_copyright));
+		mNotifBuilder.setSmallIcon(R.drawable.ic_action_play);
+		mExplicitIntent.setData(Uri.parse(MOVIES_URLS[position]));
+		mNotifBuilder.setContentIntent(mDefaultIntent);
+		mNotifBuilder.addAction(R.drawable.ic_action_about,
+						getResources().getString(R.string.infos_action_description),
+						mInfosIntent);
+    	
+		/* If a notif was already sent, cancel it */
+		if (mLastNotif != null) {
+    		if (mLastPosition  != -1) {
+    			mNotifMgr.cancel(getResources().getString(R.string.playing_notification), 
+    							 mLastPosition);
+    			mLastPosition = -1;
+    		}
+    		else
+    			mNotifMgr.cancelAll();
+    		mLastNotif = null;
+    	}
+    	mLastNotif = mNotifBuilder.build();
+    	mLastPosition = position;
+    	
+    	/* Setup media player for playing the movie */
+		mVideoHolder.setVideoURI(Uri.parse(MOVIES_URLS[position]));
+		mVideoHolder.requestFocus();
+		mVideoHolder.start();
+		
+		if (msec > 0) {
+        	if (mVideoHolder.canPause()) mVideoHolder.pause();
+			mVideoHolder.seekTo(msec);
+        	if (mVideoHolder.canPause()) mVideoHolder.resume();
+		}
+		
+		/* Player has started ... send notification */
+		mNotifMgr.notify(getResources().getString(R.string.playing_notification), 
+						 mLastPosition, 
+						 mLastNotif);
 	}
 
 	@Override
 	public void onDrawerClosed(View arg0) {
+		Log.v(LOG_TAG, "FullscreenActivity::onDrawerClosed - Enter\n");
+
 		View decorView = getWindow().getDecorView();
 		int uiOptions = View.SYSTEM_UI_FLAG_FULLSCREEN 
 				| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
 				| View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
 		decorView.setSystemUiVisibility(uiOptions);
-		if (mVideoHolder.canPause()) mVideoHolder.start();
+		if (mVideoHolder.canPause()) mVideoHolder.resume();
 	}
 
 	@Override
 	public void onDrawerOpened(View arg0) {
+		Log.v(LOG_TAG, "FullscreenActivity::onDrawerOpened - Enter\n");
 		View decorView = getWindow().getDecorView();
 		int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
 				| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
@@ -277,13 +434,12 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 
 	@Override
 	public void onDrawerSlide(View arg0, float arg1) {
-		// TODO Auto-generated method stub
-		
+		Log.v(LOG_TAG, "FullscreenActivity::onDrawerSlide - Enter\n");		
 	}
 
 	@Override
 	public void onDrawerStateChanged(int arg0) {
-		// TODO Auto-generated method stub
-		
+		Log.v(LOG_TAG, "FullscreenActivity::onDrawerStateChanged - Enter\n");		
 	}
+	
 }
