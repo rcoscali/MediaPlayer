@@ -90,6 +90,7 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 	private MediaController mControlsView;
 	private ListView mMoviesList;
 
+	@SuppressLint("InlinedApi")
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -114,20 +115,31 @@ public class FullscreenActivity extends Activity implements DrawerListener {
 				   		View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
 				   		View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
 				   		View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-				   		View.SYSTEM_UI_FLAG_FULLSCREEN |
-				   		View.SYSTEM_UI_FLAG_IMMERSIVE;
+				   		View.SYSTEM_UI_FLAG_FULLSCREEN;
+		if (Build.VERSION.SDK_INT >= 19) {
+			uiOptions |= View.SYSTEM_UI_FLAG_IMMERSIVE;
+        }
 		decorView.setSystemUiVisibility(uiOptions);
 		// Remember that you should never show the action bar if the
 		// status bar is hidden, so hide that too if necessary.
 		ActionBar actionBar = getActionBar();
 		actionBar.hide();
 		
-		mVideoHolder.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-										   View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-										   View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-										   View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-										   View.SYSTEM_UI_FLAG_FULLSCREEN |
-										   View.SYSTEM_UI_FLAG_IMMERSIVE);
+		if (Build.VERSION.SDK_INT >= 19) {
+			mVideoHolder.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+					View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+					View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+					View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+					View.SYSTEM_UI_FLAG_FULLSCREEN |
+					View.SYSTEM_UI_FLAG_IMMERSIVE);
+		}
+		else {
+			mVideoHolder.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+					View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+					View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+					View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+					View.SYSTEM_UI_FLAG_FULLSCREEN);			
+		}
 		OnItemClickListener mMessageClickedHandler = new OnItemClickListener() {
 		    public void onItemClick(@SuppressWarnings("rawtypes") AdapterView parent, View v, int position, long id) {
 		    	mDrawer.closeDrawers();
