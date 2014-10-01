@@ -119,8 +119,8 @@ public class FullscreenActivity
     private static final String MOVIES_ARR[] = {
         /*00*/          "", 
         /*01*/          "Sintel (mp4)", 
-        /*02*/          "Elephants Dream (avi)", 
-        /*03*/          "exMPD_BIP_TC1 (dash+xml)", 
+        /*02*/          "Avatar trailer (mp4)", 
+        /*03*/          "Avatar trailer (cenc)", 
         /*04*/          "Reel (avi)", 
         /*05*/          "Big Buck Bunny (m4v)",
         /*06*/          "Elephants Dream (mkv)",
@@ -139,8 +139,8 @@ public class FullscreenActivity
     private static final String MOVIES_URLS[] = {
         /*00*/        "",
         /*01*/        "http://mirrorblender.top-ix.org/movies/sintel-1280-surround.mp4",
-        /*02*/        "http://video.blendertestbuilds.de/download.blender.org/ED/ED_1024.avi",
-        /*03*/        "http://dash.edgesuite.net/dash264/TestCases/1a/netflix/exMPD_BIP_TC1.mpd",
+        /*02*/        "http://home.citycable.ch/rcoscali/Aspire/assets/avatar.mp4",
+        /*03*/        "http://home.citycable.ch/rcoscali/Aspire/assets/avatar_cenc.mp4",
         /*04*/        "http://av.vimeo.com/12067/403/106802665.mp4?download=1&token2=1406580578_b736cf91787070149db5c21909d920e3&filename=Reel%25202012-HD.mp4",
         /*05*/        "http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_640x360.m4v",
         /*06*/        "http://download.blender.org/ED/ed3d_sidebyside-RL-2x1920x1038_24fps.mkv",
@@ -157,7 +157,7 @@ public class FullscreenActivity
     	/*00*/			"",
     	/*01*/			"",
     	/*02*/			"",
-    	/*03*/			"",
+    	/*03*/			"drm",
     	/*04*/			"",
     	/*05*/			"drm",
     	/*06*/			"",
@@ -655,8 +655,10 @@ public class FullscreenActivity
                             					mediaCrypto,
                             					0);
                             	codec.start();
-                            	ByteBuffer[] inputBuffers = codec.getInputBuffers();
-                            	ByteBuffer[] outputBuffers = codec.getOutputBuffers();
+                            	@SuppressWarnings("unused")
+								ByteBuffer[] inputBuffers = codec.getInputBuffers();
+                            	@SuppressWarnings("unused")
+								ByteBuffer[] outputBuffers = codec.getOutputBuffers();
                             	for (;;) {
                             		   int inputBufferIndex = codec.dequeueInputBuffer(200000);
                             		   if (inputBufferIndex >= 0) {
