@@ -57,6 +57,7 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.MediaController;
+import android.widget.Toast;
 import android.widget.VideoView;
 
 /**
@@ -435,6 +436,9 @@ public class FullscreenActivity
                     if (position >= MOVIES_URLS.length)
                         position = 0;
                     ClickItem(position, 0);
+
+                    String toaststr = getResources().getString(R.string.next_movie_toast_string) + MOVIES_ARR[position];
+                    Toast.makeText(FullscreenActivity.this, toaststr, Toast.LENGTH_LONG).show();
                 }
             }, new View.OnClickListener() 
                 {
@@ -451,6 +455,9 @@ public class FullscreenActivity
                         if (position < 0)
                             position = MOVIES_URLS.length -1;
                         ClickItem(position, 0);
+                        
+                        String toaststr = getResources().getString(R.string.prev_movie_toast_string) + MOVIES_ARR[position];
+                        Toast.makeText(FullscreenActivity.this, toaststr, Toast.LENGTH_LONG).show();
                     }
                 });
         mVideoHolder.setMediaController(mControlsView);
@@ -585,7 +592,8 @@ public class FullscreenActivity
     /**
      *
      */        
-    private void ClickItem(int position, int msec) {
+    @SuppressWarnings("unused")
+	private void ClickItem(int position, int msec) {
         Log.v(LOG_TAG, "FullscreenActivity::ClickItem - Enter\n");
 
         /* Close the drawer */
@@ -619,7 +627,7 @@ public class FullscreenActivity
         mLastNotif = mNotifBuilder.build();
         mLastPosition = position;
         
-        if (MOVIES_MDTA[position].contains("drm")) {
+        if (false && MOVIES_MDTA[position].contains("drm")) {
             Log.d(LOG_TAG, "Starting extraction of Media Metadata\n");
             MediaExtractor extractor = new MediaExtractor();
             try {

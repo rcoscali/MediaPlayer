@@ -14,5 +14,7 @@
     <string name="app_copyright">This player is a gift from Nagravision, a division of Kudelski Group</string>
     <string name="app_description">MediaPlayer providing descrambling through Android DRM framework</string>
     <string name="infos_action_description">Information on Movie Format, Codec &amp; Drm</string>
+    <string name="prev_movie_toast_string">Previous movie playing: </string>
+    <string name="next_movie_toast_string">Next movie playing: </string>
     
 </resources>
